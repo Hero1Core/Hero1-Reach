@@ -1,0 +1,28 @@
+[tool.poetry]
+name = "hero1-reach-backend"
+version = "0.1.0"
+description = "Hero1 Reach Enterprise AI SaaS Backend Engine"
+authors = ["Hero1Core Team <architecture@hero1reach.com>"]
+
+[tool.poetry.dependencies]
+python = "^3.11"
+fastapi = "^0.110.0"
+uvicorn = {extras = ["standard"], version = "^0.28.0"}
+sqlalchemy = "^2.0.28"
+asyncpg = "^0.29.0"
+alembic = "^1.13.1"
+pydantic = "^2.6.4"
+pydantic-settings = "^2.2.1"
+redis = "^5.0.3"
+python-json-logger = "^2.0.7"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.1.1"
+pytest-asyncio = "^0.23.6"
+httpx = "^0.27.0"
+black = "^24.3.0"
+ruff = "^0.3.3"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
