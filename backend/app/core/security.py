@@ -17,6 +17,6 @@ def create_access_token(subject: str, expires_minutes: int = 30) -> str:
 
     return jwt.encode(
         payload,
-        settings.secret_key,
+        settings.SECRET_KEY,
         algorithm=ALGORITHM,
     )
