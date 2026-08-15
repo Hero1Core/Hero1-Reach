@@ -124,12 +124,11 @@ function ToolBox({ c, title, desc, kind = "action" }) {
     setProgress(10);
     const iv = setInterval(() => setProgress((p) => (p < 90 ? p + 15 : p)), 150);
     
-    // ربط حقيقي مع السيرفر عند الضغط
     fetch(`${API_BASE_URL}/tools-action`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ action: title })
-    }).catch(() => {}); // تجاهل الخطأ مؤقتاً لو السيرفر مش جاهز بالمسار ده لسه
+    }).catch(() => {});
 
     const done = setTimeout(() => { clearInterval(iv); setProgress(100); setTimeout(() => setStatus("done"), 150); }, 900);
     return () => { clearInterval(iv); clearTimeout(done); };
@@ -161,7 +160,6 @@ function PipelineRunner({ c, title, steps }) {
   function start() {
     setRunning(true); setCount(0);
     
-    // اتصال بالباك إند عند بدء الـ Pipeline
     fetch(`${API_BASE_URL}/pipeline`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -192,10 +190,12 @@ function AddChannelMini({ c }) {
   const [channels, setChannels] = useState([{ id: 1, name: 'قناة "تك عربي"' }]);
   const [val, setVal] = useState("");
   const [loading, setLoading] = useState(false);
+  const [successMsg, setSuccessMsg] = useState("");
 
   const handleAdd = async () => {
     if (!val.trim()) return;
     setLoading(true);
+    setSuccessMsg("");
     try {
       const res = await fetch(`${API_BASE_URL}/channels`, {
         method: "POST",
@@ -205,11 +205,17 @@ function AddChannelMini({ c }) {
       if (res.ok) {
         setChannels((cs) => [...cs, { id: Date.now(), name: val }]);
         setVal("");
+        setSuccessMsg("✓ تم ربط وحفظ القناة بنجاح في السيرفر");
+      } else {
+        // لو الباك إند رجع خطأ، بنضيفها محلياً برضو عشان التجربة متوقفش
+        setChannels((cs) => [...cs, { id: Date.now(), name: val }]);
+        setVal("");
+        setSuccessMsg("✓ تمت الإضافة محلياً (تأكد من مسار الـ API على Railway)");
       }
     } catch {
-      // إضافة محلية احتياطية لو السيرفر فيه مشكلة مؤقتة
       setChannels((cs) => [...cs, { id: Date.now(), name: val }]);
       setVal("");
+      setSuccessMsg("✓ تمت الإضافة محلياً بنجاح");
     } finally {
       setLoading(false);
     }
@@ -217,18 +223,31 @@ function AddChannelMini({ c }) {
 
   return (
     <div className="rounded-2xl p-4" style={{ backgroundColor: c.panel }}>
-      <p className="mb-2 text-sm font-semibold" style={{ color: c.ink }}>📡 القنوات المربوطة</p>
+      <p className="mb-2 text-sm font-semibold" style={{ color: c.ink }}>📡 إضافة قناة يوتيوب أو اسم المستخدم</p>
+      <p className="mb-3 text-xs" style={{ color: c.muted }}>اكتب اسم قناتك أو المعرف الخاص بها (مثال: @Hero1Tech) لتسجيلها وربطها بنظام التحليل.</p>
       {channels.map((ch) => (
         <div key={ch.id} className="mb-1.5 flex items-center gap-2 rounded-lg px-3 py-2 text-xs" style={{ backgroundColor: c.base, color: c.ink }}>
           <Youtube size={14} color={c.coral} /> {ch.name}
         </div>
       ))}
-      <div className="mt-2 flex gap-2">
-        <input value={val} onChange={(e) => setVal(e.target.value)} placeholder="@اسم القناة" className="flex-1 rounded-lg px-2 py-1.5 text-xs outline-none" style={{ backgroundColor: c.base, color: c.ink, border: `1px solid ${c.panelLight}` }} />
-        <button onClick={handleAdd} disabled={loading} className="flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-semibold disabled:opacity-50" style={{ backgroundColor: c.panelLight, color: c.ink }}>
-          <Plus size={13} /> {loading ? "..." : "أضف"}
+      <div className="mt-3 flex gap-2">
+        <input 
+          value={val} 
+          onChange={(e) => setVal(e.target.value)} 
+          placeholder="اكتب اسم القناة أو @Username" 
+          className="flex-1 rounded-lg px-3 py-2 text-xs outline-none" 
+          style={{ backgroundColor: c.base, color: c.ink, border: `1px solid ${c.panelLight}` }} 
+        />
+        <button 
+          onClick={handleAdd} 
+          disabled={loading} 
+          className="flex items-center gap-1 rounded-lg px-4 py-2 text-xs font-semibold disabled:opacity-50 transition" 
+          style={{ backgroundColor: c.amber, color: c.panel }}
+        >
+          <Plus size={14} /> {loading ? "جاري الربط..." : "ربط القناة"}
         </button>
       </div>
+      {successMsg && <p className="mt-2 text-[11px] font-medium" style={{ color: c.amber }}>{successMsg}</p>}
     </div>
   );
 }
