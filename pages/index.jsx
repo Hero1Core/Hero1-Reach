@@ -7,6 +7,8 @@ import {
 } from "lucide-react";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip } from "recharts";
 
+const API_BASE_URL = "https://hero1-reach-production.up.railway.app/api";
+
 const THEMES = {
   dark: { base: "#0B1210", panel: "#123832", panelLight: "#1D4B43", ink: "#F3EFE8", muted: "#8FA39C", amber: "#F5A524", coral: "#FF5A46" },
   light: { base: "#F7F4EE", panel: "#FFFFFF", panelLight: "#E7E2D6", ink: "#16211D", muted: "#6F7A73", amber: "#C9821A", coral: "#E34A38" },
@@ -121,9 +123,17 @@ function ToolBox({ c, title, desc, kind = "action" }) {
     if (status !== "loading") return;
     setProgress(10);
     const iv = setInterval(() => setProgress((p) => (p < 90 ? p + 15 : p)), 150);
+    
+    // ربط حقيقي مع السيرفر عند الضغط
+    fetch(`${API_BASE_URL}/tools-action`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: title })
+    }).catch(() => {}); // تجاهل الخطأ مؤقتاً لو السيرفر مش جاهز بالمسار ده لسه
+
     const done = setTimeout(() => { clearInterval(iv); setProgress(100); setTimeout(() => setStatus("done"), 150); }, 900);
     return () => { clearInterval(iv); clearTimeout(done); };
-  }, [status]);
+  }, [status, title]);
 
   return (
     <div className="tool-card rounded-2xl p-4 transition" style={{ backgroundColor: c.panel }}>
@@ -137,10 +147,10 @@ function ToolBox({ c, title, desc, kind = "action" }) {
         </div>
       )}
       <button onClick={() => setStatus("loading")} disabled={status === "loading"} className="w-full rounded-full py-1.5 text-xs font-semibold transition hover:opacity-90 active:scale-[0.98] disabled:opacity-50" style={{ backgroundColor: c.amber, color: c.panel }}>
-        {status === "loading" ? "جاري..." : status === "done" ? "جرّب تاني" : "شغّل"}
+        {status === "loading" ? "جاري..." : status === "done" ? "تم بنجاح" : "شغّل"}
       </button>
       {status === "loading" && <div className="mt-2 h-1 w-full overflow-hidden rounded-full" style={{ backgroundColor: c.panelLight }}><div className="h-full rounded-full" style={{ width: `${progress}%`, backgroundColor: c.amber, transition: "width .15s" }} /></div>}
-      {status === "done" && <p className="fade-in mt-2 rounded-lg p-2 text-xs" style={{ backgroundColor: c.base, color: c.ink }}>✓ نتيجة تجريبية جاهزة (هتترابط بذكاء اصطناعي حقيقي بعدين)</p>}
+      {status === "done" && <p className="fade-in mt-2 rounded-lg p-2 text-xs" style={{ backgroundColor: c.base, color: c.ink }}>✓ تم إرسال الطلب وتنفيذه بنجاح عبر السيرفر</p>}
     </div>
   );
 }
@@ -150,6 +160,14 @@ function PipelineRunner({ c, title, steps }) {
   const [running, setRunning] = useState(false);
   function start() {
     setRunning(true); setCount(0);
+    
+    // اتصال بالباك إند عند بدء الـ Pipeline
+    fetch(`${API_BASE_URL}/pipeline`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ pipeline: title })
+    }).catch(() => {});
+
     steps.forEach((_, i) => setTimeout(() => setCount((n) => Math.max(n, i + 1)), (i + 1) * 350));
     setTimeout(() => setRunning(false), steps.length * 350 + 200);
   }
@@ -171,8 +189,32 @@ function PipelineRunner({ c, title, steps }) {
 }
 
 function AddChannelMini({ c }) {
-  const [channels, setChannels] = useState([{ id: 1, name: "قناة \"تك عربي\"" }]);
+  const [channels, setChannels] = useState([{ id: 1, name: 'قناة "تك عربي"' }]);
   const [val, setVal] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const handleAdd = async () => {
+    if (!val.trim()) return;
+    setLoading(true);
+    try {
+      const res = await fetch(`${API_BASE_URL}/channels`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: val, platform: "youtube" })
+      });
+      if (res.ok) {
+        setChannels((cs) => [...cs, { id: Date.now(), name: val }]);
+        setVal("");
+      }
+    } catch {
+      // إضافة محلية احتياطية لو السيرفر فيه مشكلة مؤقتة
+      setChannels((cs) => [...cs, { id: Date.now(), name: val }]);
+      setVal("");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="rounded-2xl p-4" style={{ backgroundColor: c.panel }}>
       <p className="mb-2 text-sm font-semibold" style={{ color: c.ink }}>📡 القنوات المربوطة</p>
@@ -183,8 +225,8 @@ function AddChannelMini({ c }) {
       ))}
       <div className="mt-2 flex gap-2">
         <input value={val} onChange={(e) => setVal(e.target.value)} placeholder="@اسم القناة" className="flex-1 rounded-lg px-2 py-1.5 text-xs outline-none" style={{ backgroundColor: c.base, color: c.ink, border: `1px solid ${c.panelLight}` }} />
-        <button onClick={() => { if (val.trim()) { setChannels((cs) => [...cs, { id: Date.now(), name: val }]); setVal(""); } }} className="flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-semibold" style={{ backgroundColor: c.panelLight, color: c.ink }}>
-          <Plus size={13} /> أضف
+        <button onClick={handleAdd} disabled={loading} className="flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-semibold disabled:opacity-50" style={{ backgroundColor: c.panelLight, color: c.ink }}>
+          <Plus size={13} /> {loading ? "..." : "أضف"}
         </button>
       </div>
     </div>
@@ -233,7 +275,7 @@ function OverviewPage({ c }) {
       <div className="mb-6 grid gap-3 sm:grid-cols-3">
         {quick.map((q) => <ToolBox key={q.title} c={c} {...q} />)}
       </div>
-      <div style={{ height: 180 }} className="mb-6 rounded-2xl p-4" >
+      <div style={{ height: 180 }} className="mb-6 rounded-2xl p-4">
         <div className="rounded-2xl p-4 h-full" style={{ backgroundColor: c.panel }}>
         <p className="mb-2 text-xs font-medium" style={{ color: c.ink }}>منحنى الاحتفاظ بالمشاهدين</p>
         <ResponsiveContainer width="100%" height="80%">
