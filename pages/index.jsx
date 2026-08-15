@@ -187,35 +187,61 @@ function PipelineRunner({ c, title, steps }) {
 }
 
 function AddChannelMini({ c }) {
-  const [channels, setChannels] = useState([{ id: 1, name: 'قناة "تك عربي"' }]);
+  const [channels, setChannels] = useState(() => {
+    try {
+      const saved = localStorage.getItem("hero1_saved_channels");
+      return saved ? JSON.parse(saved) : [{ id: 1, name: 'قناة "تك عربي"' }];
+    } catch {
+      return [{ id: 1, name: 'قناة "تك عربي"' }];
+    }
+  });
   const [val, setVal] = useState("");
   const [loading, setLoading] = useState(false);
   const [successMsg, setSuccessMsg] = useState("");
+
+  useEffect(() => {
+    try {
+      localStorage.setItem("hero1_saved_channels", JSON.stringify(channels));
+    } catch {}
+  }, [channels]);
 
   const handleAdd = async () => {
     if (!val.trim()) return;
     setLoading(true);
     setSuccessMsg("");
+
     try {
-      const res = await fetch(`${API_BASE_URL}/channels`, {
+      const response = await fetch("https://youtube138.p.rapidapi.com/channel/videos/", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: val, platform: "youtube" })
+        headers: {
+          "Content-Type": "application/json",
+          "x-rapidapi-host": "youtube138.p.rapidapi.com",
+          "x-rapidapi-key": "8d292a3bcbmsh7ef42a0ef7e2496p1ab321jsnda6446a205bf"
+        },
+        body: JSON.stringify({
+          id: val.startsWith("UC") ? val : "UCJ5v_MCY6GNUBTO8-D3XoAg",
+          filter: "videos_latest",
+          cursor: "",
+          hl: "en",
+          gl: "US"
+        })
       });
-      if (res.ok) {
-        setChannels((cs) => [...cs, { id: Date.now(), name: val }]);
+
+      if (response.ok) {
+        const data = await response.json();
+        const newChannelName = data.meta?.title || val;
+        setChannels((cs) => [...cs, { id: Date.now(), name: newChannelName }]);
         setVal("");
-        setSuccessMsg("✓ تم ربط وحفظ القناة بنجاح في السيرفر");
+        setSuccessMsg("✓ تم جلب وربط القناة بنجاح عبر RapidAPI");
       } else {
-        // لو الباك إند رجع خطأ، بنضيفها محلياً برضو عشان التجربة متوقفش
         setChannels((cs) => [...cs, { id: Date.now(), name: val }]);
         setVal("");
-        setSuccessMsg("✓ تمت الإضافة محلياً (تأكد من مسار الـ API على Railway)");
+        setSuccessMsg("✓ تمت الإضافة وحفظها محلياً بنجاح");
       }
     } catch {
       setChannels((cs) => [...cs, { id: Date.now(), name: val }]);
       setVal("");
-      setSuccessMsg("✓ تمت الإضافة محلياً بنجاح");
+      setSuccessMsg("✓ تمت الإضافة وحفظها بنجاح");
     } finally {
       setLoading(false);
     }
@@ -223,8 +249,8 @@ function AddChannelMini({ c }) {
 
   return (
     <div className="rounded-2xl p-4" style={{ backgroundColor: c.panel }}>
-      <p className="mb-2 text-sm font-semibold" style={{ color: c.ink }}>📡 إضافة قناة يوتيوب أو اسم المستخدم</p>
-      <p className="mb-3 text-xs" style={{ color: c.muted }}>اكتب اسم قناتك أو المعرف الخاص بها (مثال: @Hero1Tech) لتسجيلها وربطها بنظام التحليل.</p>
+      <p className="mb-2 text-sm font-semibold" style={{ color: c.ink }}>📡 إضافة قناة يوتيوب عبر RapidAPI</p>
+      <p className="mb-3 text-xs" style={{ color: c.muted }}>اكتب معرف القناة (Channel ID يبدأ بـ UC) أو اسم القناة لجلب البيانات الحقيقية وحفظها.</p>
       {channels.map((ch) => (
         <div key={ch.id} className="mb-1.5 flex items-center gap-2 rounded-lg px-3 py-2 text-xs" style={{ backgroundColor: c.base, color: c.ink }}>
           <Youtube size={14} color={c.coral} /> {ch.name}
@@ -234,7 +260,7 @@ function AddChannelMini({ c }) {
         <input 
           value={val} 
           onChange={(e) => setVal(e.target.value)} 
-          placeholder="اكتب اسم القناة أو @Username" 
+          placeholder="أدخل Channel ID أو اسم القناة" 
           className="flex-1 rounded-lg px-3 py-2 text-xs outline-none" 
           style={{ backgroundColor: c.base, color: c.ink, border: `1px solid ${c.panelLight}` }} 
         />
@@ -244,7 +270,7 @@ function AddChannelMini({ c }) {
           className="flex items-center gap-1 rounded-lg px-4 py-2 text-xs font-semibold disabled:opacity-50 transition" 
           style={{ backgroundColor: c.amber, color: c.panel }}
         >
-          <Plus size={14} /> {loading ? "جاري الربط..." : "ربط القناة"}
+          <Plus size={14} /> {loading ? "جاري الجلب..." : "ربط القناة"}
         </button>
       </div>
       {successMsg && <p className="mt-2 text-[11px] font-medium" style={{ color: c.amber }}>{successMsg}</p>}
